@@ -18,13 +18,6 @@ import {
 interface ActionSpecBase {
   _: string;
   shadow?: boolean;
-}
-
-export const DO_NOT_USE_DATABASE_URL = "postgres://PLEASE:USE@GM_DBURL/INSTEAD";
-
-export interface SqlActionSpec extends ActionSpecBase {
-  _: "sql";
-  file: string;
 
   /**
    * USE THIS WITH CARE! Currently only supported by the afterReset hook, all
@@ -33,6 +26,13 @@ export interface SqlActionSpec extends ActionSpecBase {
    * connectionString), useful for creating extensions.
    */
   root?: boolean;
+}
+
+export const DO_NOT_USE_DATABASE_URL = "postgres://PLEASE:USE@GM_DBURL/INSTEAD";
+
+export interface SqlActionSpec extends ActionSpecBase {
+  _: "sql";
+  file: string;
 }
 
 export interface CommandActionSpec extends ActionSpecBase {
@@ -92,6 +92,9 @@ export async function executeActions(
         },
       );
     } else if (actionSpec._ === "command") {
+      const hookConnectionString = actionSpec.root
+        ? makeRootDatabaseConnectionString(parsedSettings, databaseName)
+        : connectionString;
       // Run the command
       const { stdout, stderr } = await exec(actionSpec.command, {
         env: mergeWithoutClobbering(
@@ -102,7 +105,7 @@ export async function executeActions(
           {
             GM_DBNAME: databaseName,
             GM_DBUSER: databaseUser,
-            GM_DBURL: connectionString,
+            GM_DBURL: hookConnectionString,
             ...(shadow
               ? {
                   GM_SHADOW: "1",
